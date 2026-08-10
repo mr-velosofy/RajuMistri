@@ -28,13 +28,13 @@ body {
   inset: 0;
   z-index: -1;
   background-color: #000;
-  background-image: url("BG_Day.avif"), url("bg.jpg");
+  background-image: url("../assets/BG_Day.avif"), url("../assets/bg.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 .hero-bg.night {
-  background-image: url("BG_Night.avif"), url("bg.jpg");
+  background-image: url("../assets/BG_Night.avif"), url("../assets/bg.jpg");
 }
 .hero-bg::after {
   content: "";

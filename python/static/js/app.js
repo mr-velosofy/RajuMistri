@@ -16,6 +16,7 @@
     clock: $('clock'),
     themeBtn: $('themeBtn'),
     onlineNum: $('onlineNum'),
+    onlineLabel: $('onlineLabel'),
     vinyl: $('vinyl'),
     cover: $('cover'),
     title: $('title'),
@@ -324,10 +325,10 @@
 
   el.themeBtn.addEventListener('click', function () {
     night = !night;
-    var next = night ? 'css/BG_Night.avif' : 'css/BG_Day.avif';
+    var next = night ? 'assets/BG_Night.avif' : 'assets/BG_Day.avif';
     var wasPending = finishPending;
     finishPending = true;
-    bgFade.style.backgroundImage = 'url("' + next + '"), url("bg.jpg")';
+    bgFade.style.backgroundImage = 'url("' + next + '"), url("assets/bg.jpg")';
     bgFade.classList.remove('on');
     if (!wasPending) bgFade.addEventListener('transitionend', finishFade);
     void bgFade.offsetHeight;
@@ -363,14 +364,62 @@
   }
 
   function startOnlineCounter() {
+    var driftTimer = null;
+    var live = false;
     var n = 30;
-    function update() {
+
+    function setOnline(n) {
+      el.onlineNum.textContent = n;
+      el.onlineLabel.textContent = n < 2 ? 'मज़दूर के संग' : 'मज़दूरों के संग';
+    }
+
+    function drift() {
       var dir = Math.random() < (n < 36 ? 0.58 : 0.42) ? 1 : -1;
       n = Math.max(14, Math.min(58, n + dir * (1 + Math.floor(3 * Math.random()))));
-      el.onlineNum.textContent = n;
-      window.setTimeout(update, 15000 + 15000 * Math.random());
+      setOnline(n);
     }
-    window.setTimeout(update, 15000 + 15000 * Math.random());
+
+    function startDrift() {
+      if (live) return;
+      if (driftTimer) return;
+      driftTimer = window.setInterval(drift, 15000 + 15000 * Math.random());
+    }
+
+    function poll() {
+      fetch('/api/stats', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && typeof d.active === 'number') {
+            live = true;
+            if (driftTimer) { window.clearInterval(driftTimer); driftTimer = null; }
+            el.onlineNum.textContent = d.active;
+            el.onlineLabel.textContent = d.active < 2 ? 'मज़दूर के संग' : 'मज़दूरों के संग';
+          } else {
+            startDrift();
+          }
+        })
+        .catch(startDrift);
+    }
+
+    startDrift();
+    poll();
+    window.setInterval(poll, 15000);
+  }
+
+  function startPresence() {
+    var sid = '';
+    try {
+      sid = localStorage.getItem('rm-sid');
+      if (!sid) {
+        sid = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : String(Math.random()).slice(2);
+        localStorage.setItem('rm-sid', sid);
+      }
+    } catch (e) { sid = ''; }
+    function beat() {
+      fetch('/api/beat?sid=' + encodeURIComponent(sid), { method: 'POST', keepalive: true }).catch(function () {});
+    }
+    beat();
+    window.setInterval(beat, 30000);
   }
 
   /* ---- youtube boot ---- */
@@ -483,20 +532,67 @@
     };
   }
 
+  function loadTracksFrom(candidates) {
+    var url = candidates.shift();
+    return fetch(url, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .catch(function () {
+        if (candidates.length) return loadTracksFrom(candidates);
+        throw new Error('all track sources failed');
+      });
+  }
+
+  function applyFresh() {
+    return fetch('/fresh-tracks', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (t) {
+        if (!t || !t.length) throw new Error('empty');
+        var anchor = currentTrack();
+        var anchorId = anchor ? anchor.id : null;
+        state.tracks = t.map(normalize);
+        state.order = buildOrder();
+        if (anchorId) {
+          for (var i = 0; i < state.order.length; i++) {
+            if (state.tracks[state.order[i]].id !== anchorId) continue;
+            var shift = i - state.pos;
+            if (shift > 0) {
+              state.order = state.order.slice(shift).concat(state.order.slice(0, shift));
+            } else if (shift < 0) {
+              state.order = state.order
+                .slice(state.order.length + shift)
+                .concat(state.order.slice(0, state.order.length + shift));
+            }
+            break;
+          }
+        }
+        if (state.pos >= state.order.length) state.pos = state.order.length - 1;
+        renderList();
+        renderTrack();
+        measureTicks();
+        console.log('fresh tracks applied: ' + t.length + ' (current song kept)');
+      })
+      .catch(function (e) {
+        console.warn('fresh tracks unavailable, using tracks.json:', e);
+      });
+  }
+
   function boot() {
     el.play.disabled = true;
     el.prev.disabled = true;
     el.next.disabled = true;
     startClock();
     startOnlineCounter();
+    startPresence();
     setupTicker();
     window.addEventListener('resize', measureTicks);
 
-    fetch('tracks.json', { cache: 'no-store' })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
+    loadTracksFrom(['tracks.json'])
       .then(function (tracks) {
         if (!tracks || !tracks.length) throw new Error('empty');
         state.tracks = tracks.map(normalize);
@@ -511,7 +607,7 @@
         if (!state.tracks.length) {
           el.title.textContent = 'Could not load the playlist';
           el.artist.textContent = 'Check network and reload';
-          el.err.textContent = 'Playlist fetch failed. Run node scripts/build-tracks.mjs and reload.';
+          el.err.textContent = 'Playlist fetch failed. Reload the page.';
           el.err.classList.remove('hidden');
           return;
         }
@@ -521,6 +617,8 @@
         renderTrack();
         el.prev.disabled = false;
         el.next.disabled = false;
+
+        applyFresh();
 
         var s = document.createElement('script');
         s.src = 'https://www.youtube.com/iframe_api';
