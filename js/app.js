@@ -309,19 +309,30 @@
 
   var night = false;
   var bgFade = document.getElementById('bgFade');
+  var finishPending = false;
+  var fadeTimer = 0;
+
+  function finishFade() {
+    if (!finishPending) return;
+    finishPending = false;
+    window.clearTimeout(fadeTimer);
+    document.documentElement.classList.toggle('night', night);
+    el.hero.classList.toggle('night', night);
+    bgFade.classList.remove('on');
+    bgFade.style.backgroundImage = '';
+  }
+
   el.themeBtn.addEventListener('click', function () {
     night = !night;
-    bgFade.style.backgroundImage = 'url("' + (night ? 'css/BG_Night.avif' : 'css/BG_Day.avif') + '"), url("bg.jpg")';
+    var next = night ? 'css/BG_Night.avif' : 'css/BG_Day.avif';
+    var wasPending = finishPending;
+    finishPending = true;
+    bgFade.style.backgroundImage = 'url("' + next + '"), url("bg.jpg")';
+    bgFade.classList.remove('on');
+    if (!wasPending) bgFade.addEventListener('transitionend', finishFade);
     void bgFade.offsetHeight;
     bgFade.classList.add('on');
-    window.setTimeout(function () {
-      document.documentElement.classList.toggle('night', night);
-      el.hero.classList.toggle('night', night);
-      bgFade.classList.remove('on');
-    }, 900);
-  });
-  bgFade.addEventListener('transitionend', function () {
-    if (!bgFade.classList.contains('on')) bgFade.style.backgroundImage = '';
+    fadeTimer = window.setTimeout(finishFade, 1600);
   });
 
   document.addEventListener('keydown', function (e) {
