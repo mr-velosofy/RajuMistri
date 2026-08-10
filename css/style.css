@@ -32,6 +32,10 @@ body {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  transition: background-image 0.3s;
+}
+.hero-bg.night {
+  background-image: url("BG_Night.avif"), url("bg.jpg");
 }
 .hero-bg::after {
   content: "";
@@ -40,6 +44,19 @@ body {
   background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0) 50%, rgba(0,0,0,0.4));
   pointer-events: none;
 }
+
+.bg-fade {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 0.9s ease-in-out;
+  pointer-events: none;
+}
+.bg-fade.on { clip-path: inset(0 0 0 0); }
 
 .overlay {
   position: fixed;
@@ -51,18 +68,41 @@ body {
 
 /* ---------- top-left IST clock ---------- */
 
-.status-clock {
+.status-wrap {
   position: fixed;
   left: 20px;
   top: 20px;
   z-index: 20;
-  font-size: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-clock {
+  font-size: 20px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: #fff;
   text-shadow: 0 1px 6px rgba(0,0,0,0.5);
   user-select: none;
 }
+.theme-btn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.theme-btn:hover { background: rgba(255,255,255,0.22); }
+.theme-btn svg { pointer-events: none; }
+.theme-btn .icon-sun { display: none; }
+html.night .theme-btn .icon-moon { display: none; }
+html.night .theme-btn .icon-sun { display: block; }
 .status-clock .colon { animation: blink 1s step-end infinite; }
 .status-clock .period { margin-left: 6px; color: rgba(255,255,255,0.7); }
 @keyframes blink { 50% { opacity: 0; } }
@@ -444,7 +484,8 @@ body {
 }
 
 @media (max-width: 640px) {
-  .status-clock { left: 12px; top: 12px; font-size: 25px; }
+  .status-wrap { left: 12px; top: 12px; }
+  .status-clock { font-size: 25px; }
   .player {
     flex-wrap: wrap;
     gap: 10px 12px;

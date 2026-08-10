@@ -14,6 +14,7 @@
   var el = {
     hero: $('hero'),
     clock: $('clock'),
+    themeBtn: $('themeBtn'),
     onlineNum: $('onlineNum'),
     vinyl: $('vinyl'),
     cover: $('cover'),
@@ -304,6 +305,23 @@
     el.list.classList.remove('is-open');
     el.listBtn.classList.remove('is-on');
     el.listBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  var night = false;
+  var bgFade = document.getElementById('bgFade');
+  el.themeBtn.addEventListener('click', function () {
+    night = !night;
+    bgFade.style.backgroundImage = 'url("' + (night ? 'css/BG_Night.avif' : 'css/BG_Day.avif') + '"), url("bg.jpg")';
+    void bgFade.offsetHeight;
+    bgFade.classList.add('on');
+    window.setTimeout(function () {
+      document.documentElement.classList.toggle('night', night);
+      el.hero.classList.toggle('night', night);
+      bgFade.classList.remove('on');
+    }, 900);
+  });
+  bgFade.addEventListener('transitionend', function () {
+    if (!bgFade.classList.contains('on')) bgFade.style.backgroundImage = '';
   });
 
   document.addEventListener('keydown', function (e) {
