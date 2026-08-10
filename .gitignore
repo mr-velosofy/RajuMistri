@@ -1,0 +1,12 @@
+# Python app (not deployed from this repo)
+python/
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# OS junk
+Thumbs.db
+.DS_Store
