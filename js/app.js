@@ -483,6 +483,47 @@
     };
   }
 
+  var freshBusy = false;
+
+  function applyFreshTracks() {
+    if (freshBusy) return;
+    freshBusy = true;
+    return fetchFromInvidious()
+      .then(function (res) {
+        if (!res || !res.tracks || !res.tracks.length) throw new Error('no tracks');
+        var anchor = currentTrack();
+        var anchorId = anchor ? anchor.id : null;
+        state.tracks = res.tracks.map(normalize);
+        state.order = buildOrder();
+        if (anchorId) {
+          for (var i = 0; i < state.order.length; i++) {
+            if (state.tracks[state.order[i]].id !== anchorId) continue;
+            var shift = i - state.pos;
+            if (shift > 0) {
+              state.order = state.order.slice(shift).concat(state.order.slice(0, shift));
+            } else if (shift < 0) {
+              state.order = state.order
+                .slice(state.order.length + shift)
+                .concat(state.order.slice(0, state.order.length + shift));
+            }
+            break;
+          }
+        }
+        if (state.pos >= state.order.length) state.pos = state.order.length - 1;
+        if (!state.tracks.length && el.err) el.err.classList.add('hidden');
+        renderList();
+        renderTrack();
+        measureTicks();
+        console.log('live playlist applied: ' + state.tracks.length + ' (current song kept)');
+      })
+      .catch(function (e) {
+        console.warn('live playlist unavailable, staying on tracks.json:', e);
+      })
+      .then(function () {
+        freshBusy = false;
+      });
+  }
+
   function boot() {
     el.play.disabled = true;
     el.prev.disabled = true;
@@ -508,6 +549,9 @@
         });
       })
       .then(function () {
+        applyFreshTracks();
+        window.setInterval(applyFreshTracks, 10 * 60 * 1000);
+
         if (!state.tracks.length) {
           el.title.textContent = 'Could not load the playlist';
           el.artist.textContent = 'Check network and reload';
