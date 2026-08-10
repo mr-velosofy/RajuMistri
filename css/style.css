@@ -28,7 +28,7 @@ body {
   inset: 0;
   z-index: -1;
   background-color: #000;
-  background-image: url("BG_2.avif"), url("bg.jpg");
+  background-image: url("BG_Day.avif"), url("bg.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
