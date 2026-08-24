@@ -22,7 +22,18 @@ jobs:
           ANTIDEPLOY_KEY: ${{ secrets.ANTIDEPLOY_KEY }}
         run: |
           set -o pipefail
-          tar czf - index.html Logo.svg tracks.json css js |
-            curl -fsS -X POST "https://antideploy.com/api/v1/deploy" \
+          if [ -z "$ANTIDEPLOY_KEY" ]; then
+            echo "ANTIDEPLOY_KEY secret is missing or has a different name"
+            exit 1
+          fi
+          echo "key prefix: ${ANTIDEPLOY_KEY:0:4}, length: ${#ANTIDEPLOY_KEY}"
+          code=$(tar czf - index.html Logo.svg tracks.json css js |
+            curl -sS -o resp.json -w "%{http_code}" -X POST "https://antideploy.com/api/v1/deploy" \
               -H "Authorization: Bearer $ANTIDEPLOY_KEY" \
-              -F "archive=@-"
+              -F "archive=@-")
+          cat resp.json
+          rm -f resp.json
+          case "$code" in
+            200|202) echo "deploy accepted ($code)" ;;
+            *) echo "deploy failed with HTTP $code"; exit 1 ;;
+          esac
