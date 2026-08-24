@@ -1,0 +1,28 @@
+name: Deploy to antideploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: antideploy-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Push archive to antideploy
+        env:
+          ANTIDEPLOY_KEY: ${{ secrets.ANTIDEPLOY_KEY }}
+        run: |
+          set -o pipefail
+          tar czf - index.html Logo.svg tracks.json css js |
+            curl -fsS -X POST "https://antideploy.com/api/v1/deploy" \
+              -H "Authorization: Bearer $ANTIDEPLOY_KEY" \
+              -F "archive=@-"

@@ -27,4 +27,10 @@ jobs:
           else
             git commit -m "chore: refresh tracks.json [skip ci]"
             git push
+            tar czf - index.html Logo.svg tracks.json css js |
+              curl -sS -X POST "https://antideploy.com/api/v1/deploy" \
+                -H "Authorization: Bearer $ANTIDEPLOY_KEY" \
+                -F "archive=@-"
           fi
+        env:
+          ANTIDEPLOY_KEY: ${{ secrets.ANTIDEPLOY_KEY }}
